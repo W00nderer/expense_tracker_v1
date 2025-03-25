@@ -1,15 +1,37 @@
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from collections import defaultdict
+import json
+import os
 
 from wallets import *
 from expense_category import *
 
 
 # ACCOUNT STORAGE
+
 debit_cards = []
 credit_cards = []
 cash_accounts = []
+
+# LOAD ACCOUNT FROM LOCAL STORAGE
+
+DATA_FILE = "Python\\expense_tracker\\accounts.json"
+
+def load_accounts():
+    if not os.path.exists(DATA_FILE):
+        return
+    with open(DATA_FILE, 'r') as f:
+        data = json.load(f)
+
+        for acc in data.get('debit_cards', []):
+            debit_cards.append(DebitCard.from_dict(acc))
+        for acc in data.get('credit_cards', []):
+            credit_cards.append(CreditCard.from_dict(acc))
+        for acc in data.get('cash_accounts', []):
+            cash_accounts.append(Cash.from_dict(acc))
+load_accounts()
+
 all_accounts = [debit_cards, credit_cards, cash_accounts]
 
 
@@ -123,7 +145,7 @@ while True:
             acc_name1 = input("Enter the name of the account you want to transfer money to: ")
             if acc_name == acc_name1:
                 print("\033[31mCannot transfer to the same account.\033[0m")
-                break
+                continue
             transfer_from = get_acc_by_name(acc_name)
             transfer_to = get_acc_by_name(acc_name1)
 
@@ -192,7 +214,6 @@ while True:
                         except ValueError:
                             print("\033[31mThe date should include day, month and year which form a valid date. Please try again.\033[0m")
                     acc.make_payment(pay_acc, amount, date_obj)
-                    print("\033[32mPayment successful\033[0m")
                 else: print(f"\033[31mThere is no account under the name '{pay_name}'\033[0m")
             elif not acc: print(f"\033[31mThere is no account under the name '{name}'\033[0m")
             elif not isinstance(acc, CreditCard): print(f"\033[31mAccount '{acc.name}' is not a credit card\033[0m")
@@ -245,7 +266,7 @@ while True:
                             break
                     if not deleted:
                         print(f"\033[31mNo account under the name '{name}' was found\033[0m")
-                # EDIT ACCOUNTS            
+                # EDIT ACCOUNT          
                 case "3":
                     name = input('Enter the name of the account you want to edit: ')
                     acc = get_acc_by_name(name)
@@ -330,4 +351,16 @@ while True:
             break
         case _:
             print("\033[31mError: wrong command\033[0m")
+
+# SAVE ALL ACCOUNT INFO BEFORE EXIT
+def save_accounts():
+    data = {
+        "debit_cards": [account.to_dict() for account in debit_cards],
+        "credit_cards": [account.to_dict() for account in credit_cards],
+        "cash_accounts": [account.to_dict() for account in cash_accounts]
+    }
+    with open(DATA_FILE, "w") as f:
+        json.dump(data, f, indent=5)
+
+save_accounts()
 print("End of operation")

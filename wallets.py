@@ -12,8 +12,7 @@ def round2(n):
 # WALLET (abstract class)            
 class Wallet(ABC):
     wallet_count = 0
-    def __init__(self,name: str, balance: float) -> None:
-        self.balance = balance
+    def __init__(self,name: str) -> None:
         Wallet.wallet_count+=1
         self.name = name
 
@@ -33,6 +32,18 @@ class Wallet(ABC):
             other.balance += amount
             print('Transfer success')
     
+
+    def to_dict(self):
+        return {
+            "name": self.name,
+            "purchase_list": [exp.to_dict() for exp in self.purchase_list]
+        }
+    
+    @classmethod
+    def from_dict(cls, data):
+        pass
+
+    
     @abstractmethod
     def purchase(self, amount: float, category: str, name: str, date: datetime) -> None:
         pass
@@ -48,11 +59,23 @@ class DebitCard(Wallet):
     debit_card_count = 0
     def __init__(self, name: str, balance: float) -> None:
         DebitCard.debit_card_count +=1
-        super().__init__(name, balance)
+        super().__init__(name)
+        self.balance = balance
         self.type = "Debit card"
         self.purchase_list = []
 
+    def to_dict(self):
+        data = super().to_dict()
+        data.update({"balance": self.balance})
+        return data
+    
+    @classmethod
+    def from_dict(cls, data):
+        account = cls(data["name"], data["balance"])
+        account.purchase_list = [Expense.from_dict(exp) for exp in data["purchase_list"]]
+        return account
 
+    
     def __str__(self):
         return super().__str__() + f'  Account type: {self.type}\n  Account balance: {self.balance}\n'
 
@@ -82,12 +105,23 @@ class CreditCard(Wallet):
 
     def __init__(self, name: str, limit: int, rate: float) -> None:
         CreditCard.credit_card_count +=1
-        super().__init__(name, 0)
+        super().__init__(name)
         self.type = "Credit card"
         self.credit_limit = limit
         self.interest_rate = rate
         self.purchase_list = []
+    
+    def to_dict(self):
+        data = super().to_dict()
+        data.update({"limit": self.credit_limit, "rate": self.interest_rate})
+        return data
 
+    @classmethod
+    def from_dict(cls, data):
+        account = cls(data["name"], data["limit"], data["rate"])
+        account.purchase_list = [Expense.from_dict(exp) for exp in data["purchase_list"]]
+        return account
+    
     def __str__(self):
         return super().__str__() + f'  Account type: {self.type}\n  Outstanding balance: {self.calc_outstanding_balance()}\n  Credit limit: {self.credit_limit}\n  Interest rate: {self.interest_rate}'
     
@@ -149,7 +183,8 @@ class CreditCard(Wallet):
         elif amount <= 0:
             print("The amount must be a positive number")
             return
-
+        
+        other.balance -= amount
         for exp in sorted(self.purchase_list, key=lambda x: x.date):
             if exp.date > date:
                 print("Date error. You cannot register a credit card payment on the day prior to the day of the first unpaid purchase")
@@ -160,9 +195,10 @@ class CreditCard(Wallet):
                 payment_applied = min(amount, exp.total_amount)
                 exp.total_amount -= payment_applied
                 amount -= payment_applied
+                
                 exp.remaining = exp.total_amount
                 exp.last_payment_date = date
-        other.balance -= amount
+        
                 
         new_outstanding = self.calc_outstanding_balance()
         print(f"Payment success. Current outstanding balance: {new_outstanding}")
@@ -175,9 +211,21 @@ class Cash(Wallet):
     cash_count = 0
     def __init__(self, name, balance) -> None:
         Cash.cash_count +=1
-        super().__init__(name, balance)
+        super().__init__(name)
+        self.balance = balance
         self.type = "Cash"
         self.purchase_list = []
+
+    def to_dict(self):
+        data = super().to_dict()
+        data.update({"balance": self.balance})
+        return data
+    
+    @classmethod
+    def from_dict(cls, data):
+        account = cls(data["name"], data["balance"])
+        account.purchase_list = [Expense.from_dict(exp) for exp in data["purchase_list"]]
+        return account
 
     def __str__(self):
         return super().__str__() + f'  Account type: {self.type}\n  Account balance: {self.balance}\n'
