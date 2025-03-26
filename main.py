@@ -19,17 +19,24 @@ cash_accounts = []
 DATA_FILE = "Python\\expense_tracker\\accounts.json"
 
 def load_accounts():
-    if not os.path.exists(DATA_FILE):
+    if not os.path.exists(DATA_FILE) or os.stat(DATA_FILE).st_size == 0:
         return
-    with open(DATA_FILE, 'r') as f:
-        data = json.load(f)
+    try:
+        with open(DATA_FILE, 'r') as f:
+            data = json.load(f)
 
-        for acc in data.get('debit_cards', []):
-            debit_cards.append(DebitCard.from_dict(acc))
-        for acc in data.get('credit_cards', []):
-            credit_cards.append(CreditCard.from_dict(acc))
-        for acc in data.get('cash_accounts', []):
-            cash_accounts.append(Cash.from_dict(acc))
+        debit_cards.clear()
+        credit_cards.clear()
+        cash_accounts.clear()
+
+        debit_cards.extend(DebitCard.from_dict(acc) for acc in data.get('debit_cards', []))
+        credit_cards.extend(CreditCard.from_dict(acc) for acc in data.get('credit_cards', []))
+        cash_accounts.extend(Cash.from_dict(acc) for acc in data.get('cash_accounts', []))
+
+    except json.JSONDecodeError:
+        print("Warning: accounts.json is empty or contains invalid JSON. Skipping load.")
+
+
 load_accounts()
 
 all_accounts = [debit_cards, credit_cards, cash_accounts]
